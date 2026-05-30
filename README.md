@@ -12,6 +12,50 @@ final processor input_ids
 
 The token-id frame matching path is not limited to images, audio, or video. It can also be used for text-only training whenever you want masks from the final tokenized `input_ids`. Unlike template-level Jinja `assistant_masks`, this path does not include the separator newline after the assistant end/eos token unless `include_post_end_separator_in_loss=True` is set in `AssistantFrameSpec`.
 
+## Inspect Rendered Frames
+
+To choose `assistant_header` and `assistant_end` for a model, render one tiny chat with obvious marker strings and inspect the raw template output. For Qwen3 instruct templates with empty thinking blocks, check whether extra thinking cue text appears between the assistant header and payload.
+
+```python
+from transformers import AutoProcessor
+
+model_id = "Qwen/Qwen2.5-Omni-3B"  # replace with your target model
+
+processor = AutoProcessor.from_pretrained(
+    model_id,
+    local_files_only=True,
+    trust_remote_code=True,
+)
+
+user_marker = "USER_PROMPT_MARKER"
+assistant_marker = "ASSISTANT_PAYLOAD_MARKER"
+messages = [
+    {"role": "user", "content": user_marker},
+    {"role": "assistant", "content": assistant_marker},
+]
+
+rendered = processor.apply_chat_template(
+    messages,
+    tokenize=False,
+    add_generation_prompt=False,
+)
+rendered_without_assistant = processor.apply_chat_template(
+    messages[:1],
+    tokenize=False,
+    add_generation_prompt=False,
+)
+
+assistant_start = rendered.index(assistant_marker)
+assistant_end_start = assistant_start + len(assistant_marker)
+before = rendered[len(rendered_without_assistant):assistant_start]
+after = rendered[assistant_end_start:]
+
+print("rendered =", repr(rendered))
+print("rendered_without_assistant =", repr(rendered_without_assistant))
+print("before =", repr(before))
+print("after =", repr(after))
+```
+
 ## Minimal Usage
 
 ```python
