@@ -217,7 +217,4 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# Agent
-docs/
-plans/
-progress/
+
