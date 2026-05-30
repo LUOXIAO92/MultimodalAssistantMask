@@ -125,6 +125,36 @@ def test_labels_keep_only_frame_masked_tokens(
     assert (labels[~masks] == -100).all()
 
 
+def test_frame_mask_can_exclude_assistant_prefix_from_loss() -> None:
+    processor = AutoProcessor.from_pretrained(
+        "Qwen/Qwen3-Omni-30B-A3B-Instruct",
+        local_files_only=True,
+        trust_remote_code=True,
+    )
+    rendered = (
+        "<|im_start|>user\nhello<|im_end|>\n"
+        "<|im_start|>assistant\n<think>\n\n</think>\n\nhi<|im_end|>\n"
+    )
+    batch = processor(text=[rendered], return_tensors="pt")
+    spec = AssistantFrameSpec(
+        assistant_header="<|im_start|>assistant\n",
+        assistant_end="<|im_end|>",
+        excluded_assistant_prefixes=("<think>\n\n</think>\n\n",),
+    )
+
+    mask = build_assistant_frame_mask_for_one(
+        input_ids=batch["input_ids"][0],
+        tokenizer=processor.tokenizer,
+        spec=spec,
+    )
+    supervised = processor.tokenizer.decode(
+        batch["input_ids"][0][mask],
+        skip_special_tokens=False,
+    )
+
+    assert supervised == "hi<|im_end|>"
+
+
 def test_frame_mask_include_flags_use_real_processor_input_ids() -> None:
     processor = AutoProcessor.from_pretrained(
         "Qwen/Qwen2.5-Omni-3B",

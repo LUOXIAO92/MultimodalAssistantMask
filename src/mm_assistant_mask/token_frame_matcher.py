@@ -32,6 +32,9 @@ def build_assistant_frame_mask_for_one(
 ) -> torch.BoolTensor:
     header_ids = _to_ids(tokenizer, spec.assistant_header)
     end_ids = _to_ids(tokenizer, spec.assistant_end)
+    excluded_prefix_ids = [
+        _to_ids(tokenizer, prefix) for prefix in spec.excluded_assistant_prefixes
+    ]
     separator_ids = (
         _to_ids(tokenizer, spec.post_end_separator)
         if spec.include_post_end_separator_in_loss
@@ -60,6 +63,11 @@ def build_assistant_frame_mask_for_one(
         end_start = find_subsequence(ids, end_ids, header_start + len(header_ids))
         if end_start < 0:
             raise ValueError("assistant header found but no following assistant end")
+
+        for prefix_ids in excluded_prefix_ids:
+            prefix_end = content_start + len(prefix_ids)
+            if ids[content_start:prefix_end] == prefix_ids:
+                content_start = prefix_end
 
         end_end = end_start + len(end_ids)
         content_end = end_end if spec.include_end_in_loss else end_start

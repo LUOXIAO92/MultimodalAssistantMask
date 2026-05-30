@@ -13,24 +13,27 @@ def build_multimodal_assistant_collator(
     frame_spec: AssistantFrameSpec,
     *,
     max_length: int | None = None,
-    chat_template: str | None = None,
 ) -> Callable[[list[dict[str, Any]]], dict[str, Any]]:
     def collate(features: list[dict[str, Any]]) -> dict[str, Any]:
+        # Multimodal training uses the processor's own chat template. Training
+        # Jinja templates are for text-only tokenizer assistant_masks checks.
         rendered_texts = [
             processor.apply_chat_template(
                 feature["messages"],
                 tokenize=False,
                 add_generation_prompt=False,
-                chat_template=chat_template,
             )
             for feature in features
         ]
+        media_kwargs = {}
+        for key in ("images", "audio", "videos"):
+            values = [feature.get(key) for feature in features]
+            if any(value is not None for value in values):
+                media_kwargs[key] = values
 
         batch = processor(
             text=rendered_texts,
-            images=[feature.get("images") for feature in features],
-            audio=[feature.get("audio") for feature in features],
-            videos=[feature.get("videos") for feature in features],
+            **media_kwargs,
             return_tensors="pt",
             padding=True,
             truncation=max_length is not None,

@@ -19,7 +19,8 @@
 | 5 | stopping 工具 | 已完成 | stop sequence 行为测试通过 |
 | 6 | 核心测试覆盖 | 已完成 | 真实 processor 驱动的核心测试稳定通过 |
 | 7 | 示例与 README | 已完成 | README 与 generic collator 示例可读 |
-| 8 | Jinja template 修改线 | 后续 | render parity 与 tokenizer-only mask 测试通过 |
+| 8 | Jinja/template 修改线 | 已完成 | text-only 与 tool call render parity / tokenizer-only mask 测试通过 |
+| 9 | 最小真实使用示例 | 已完成 | 一模型一脚本，多步多模态与多步纯文本示例已通过 |
 
 ## 详细任务
 
@@ -48,6 +49,7 @@
 | 添加 header/end 字段 | 已完成 | 必需字段 |
 | 添加 generation stop 字段 | 已完成 | 为空时可回退到 assistant end |
 | 添加 include flags | 已完成 | 默认不含 header，包含 end，不含 end 后 newline |
+| 添加 assistant 起始前缀排除 | 已完成 | 可排除 Qwen3 空 think 前缀等结构文本 |
 | 添加基础 validation | 已完成 | header/end 不允许为空 |
 | 真实 processor 测试默认策略 | 已完成 | 覆盖 Qwen/Gemma 风格配置表达能力，不使用 fake tokenizer |
 
@@ -126,17 +128,32 @@
 | README 说明主路径 | 已完成 | final input_ids + frame matching |
 | README 说明 `{% generation %}` 边界 | 已完成 | 模板线不是多模态主路径 |
 | 新增 generic collator 示例 | 已完成 | 不写死具体模型 |
+| generic collator 模板边界 | 已完成 | 使用 processor 默认模板，不接收/透传 train Jinja |
 | 文档说明 truncation 策略 | 已完成 | 抛错、跳过或调整 max_length |
 
-### 阶段 8：Jinja template 修改线
+### 阶段 8：Jinja/template 修改线
 
 | 任务 | 状态 | 备注 |
 | --- | --- | --- |
-| Qwen 风格 training template | 后续 | 主路径稳定后做 |
-| Gemma 风格 training template | 后续 | 主路径稳定后做 |
-| render parity 测试 | 后续 | 需要选定模板来源 |
-| tokenizer-only assistant mask 测试 | 后续 | 不替代多模态主路径 |
-| add_generation_prompt 测试 | 后续 | header only，无 payload |
+| Qwen 风格 training template | 已完成 | 已新增 Qwen2.5/Qwen3 Omni `*-train.jinja`，text-only 与 Qwen3 tool call 已验收 |
+| Gemma 风格 training template | 已完成 | 已新增 Gemma 4 E2B it `*-train.jinja`，text-only 与 tool call 已验收 |
+| render parity 测试 | 已完成 | text-only 与 tool call 均与源模板渲染一致 |
+| tokenizer-only assistant mask 测试 | 已完成 | header 不进 mask，payload/end/tool call 进 mask；Qwen3 空 think 前缀不进 mask |
+| add_generation_prompt 测试 | 已完成 | text-only prompt cue 无 payload mask |
+
+### 阶段 9：真实使用示例
+
+| 任务 | 状态 | 备注 |
+| --- | --- | --- |
+| 旧真实多模态示例计划 | 已废弃 | `plans/real_multimodal_usage_example_plan.md` 已标注不合格 |
+| 旧真实多模态示例进度 | 已废弃 | `progress/real_multimodal_usage_example_progress.md` 已标注不合格 |
+| 最小用例新计划 | 已完成 | `plans/minimal_assistant_mask_usage_examples_plan.md` |
+| 最小用例新进度 | 已完成 | `progress/minimal_assistant_mask_usage_examples_progress.md` |
+| Qwen2.5-Omni 一脚本用例 | 已完成 | 一个脚本内包含多步多模态与多步纯文本两个 section |
+| Qwen3-Omni 一脚本用例 | 已完成 | 一个脚本内包含多步多模态与多步纯文本两个 section |
+| Gemma 4 E2B it 一脚本用例 | 已完成 | 一个脚本内包含多步多模态与多步纯文本两个 section |
+| 示例轻量测试 | 已完成 | 编译、检查无旧分支/下载 helper |
+| 真实 URL 多模态运行 | 已完成 | 三个最小脚本已直接运行通过 |
 
 ## 当前已完成事项
 
@@ -156,7 +173,12 @@
 14. 已完成 README 和 generic processor collator 示例，并通过 pytest 与 py_compile 验证。
 15. 已完成 Qwen2.5-Omni image/audio mixed user content 真实 processor 测试。
 16. 已完成 processor assistant mask diagnostic regression，并确认核心测试覆盖阶段完成。
+17. 已完成阶段 8 training chat template 修改线，新增 Gemma/Qwen Omni `*-train.jinja` 模板，并通过 text-only 与 tool call assistant mask 测试。
+18. 旧真实使用示例因抽象层过重已废弃；已按最小用例计划新增一模型一脚本示例，每个脚本内直接展示多步多模态与多步纯文本两条路径。
+19. 已新增 `AssistantFrameSpec.excluded_assistant_prefixes`，用于排除 Qwen3-Omni-Instruct 自动插入的空 `<think>` 闭合前缀等不应进入 loss 的 assistant 起始结构文本。
 
-## 下一步建议
+## 后续工作
 
-下一步从阶段 0 开始：确认项目骨架、`makesense` conda 环境，以及 `Qwen/Qwen2.5-Omni-3B`、`Qwen/Qwen3-Omni-30B-A3B-Instruct`、`google/gemma-4-E2B-it` 三个真实 processor 的测试依赖。processor 测试只加载 processor/tokenizer，不加载模型权重；随后新增最小 Python package 与 pytest 配置，再进入 `AssistantFrameSpec` 和 token frame matcher 的实现。
+阶段 0 到阶段 9 当前计划内工作均已完成。旧 `real_multimodal*` 示例已标注废弃，后续由用户移除。
+
+后续可选工作只剩非阻塞增强：例如为 validation/debug 增加 raw frame string 风险提示，或在确有调用方后再设计模板发现/加载 API。
