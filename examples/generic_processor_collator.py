@@ -2,15 +2,14 @@ from collections.abc import Callable
 from typing import Any
 
 from mm_assistant_mask import (
-    AssistantFrameSpec,
-    build_assistant_frame_masks,
-    build_labels_from_frame_mask,
+    AssistantMaskSpec,
+    build_assistant_labels,
 )
 
 
 def build_multimodal_assistant_collator(
     processor,
-    frame_spec: AssistantFrameSpec,
+    spec: AssistantMaskSpec,
     *,
     max_length: int | None = None,
 ) -> Callable[[list[dict[str, Any]]], dict[str, Any]]:
@@ -40,15 +39,10 @@ def build_multimodal_assistant_collator(
             max_length=max_length,
         )
 
-        frame_masks = build_assistant_frame_masks(
-            input_ids=batch["input_ids"],
+        batch["labels"] = build_assistant_labels(
+            batch,
             tokenizer=processor.tokenizer,
-            spec=frame_spec,
-        )
-        batch["labels"] = build_labels_from_frame_mask(
-            input_ids=batch["input_ids"],
-            frame_mask=frame_masks,
-            attention_mask=batch.get("attention_mask"),
+            spec=spec,
         )
         return batch
 

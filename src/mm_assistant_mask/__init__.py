@@ -1,7 +1,11 @@
 """Utilities for multimodal assistant-only label masking."""
 
-from .frame_spec import AssistantFrameSpec
-from .labels import build_labels_from_frame_mask
+from .frame_spec import AssistantFrameSpec, AssistantMaskSpec
+from .labels import (
+    build_assistant_labels,
+    build_assistant_mask,
+    build_labels_from_frame_mask,
+)
 from .stopping import StopOnTokenSequence, stop_on_assistant_end
 from .token_frame_matcher import (
     build_assistant_frame_mask_for_one,
@@ -18,8 +22,11 @@ from .validation import (
 
 __all__ = [
     "AssistantFrameSpec",
+    "AssistantMaskSpec",
     "build_assistant_frame_mask_for_one",
     "build_assistant_frame_masks",
+    "build_assistant_labels",
+    "build_assistant_mask",
     "build_labels_from_frame_mask",
     "StopOnTokenSequence",
     "stop_on_assistant_end",

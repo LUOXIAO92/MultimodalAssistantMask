@@ -1,10 +1,14 @@
 import pytest
+import torch
 from transformers import AutoProcessor
 
 from mm_assistant_mask import (
     AssistantFrameSpec,
+    AssistantMaskSpec,
     build_assistant_frame_mask_for_one,
     build_assistant_frame_masks,
+    build_assistant_labels,
+    build_assistant_mask,
     build_labels_from_frame_mask,
 )
 
@@ -123,6 +127,75 @@ def test_labels_keep_only_frame_masked_tokens(
     assert labels.shape == batch["input_ids"].shape
     assert (labels[masks] == batch["input_ids"][masks]).all()
     assert (labels[~masks] == -100).all()
+
+
+def test_public_assistant_labels_api_matches_lower_level_path() -> None:
+    processor = AutoProcessor.from_pretrained(
+        "Qwen/Qwen2.5-Omni-3B",
+        local_files_only=True,
+        trust_remote_code=True,
+    )
+    spec = AssistantMaskSpec(
+        assistant_header="<|im_start|>assistant\n",
+        assistant_end="<|im_end|>",
+    )
+    rendered = processor.apply_chat_template(
+        [
+            {"role": "user", "content": "hello"},
+            {"role": "assistant", "content": "hi"},
+        ],
+        tokenize=False,
+        add_generation_prompt=False,
+    )
+    batch = processor(text=[rendered], return_tensors="pt")
+
+    assistant_mask = build_assistant_mask(batch, processor.tokenizer, spec)
+    public_labels = build_assistant_labels(batch, processor.tokenizer, spec)
+    lower_level_labels = build_labels_from_frame_mask(
+        input_ids=batch["input_ids"],
+        frame_mask=assistant_mask,
+        attention_mask=batch.get("attention_mask"),
+    )
+
+    assert assistant_mask.dtype == torch.bool
+    assert public_labels.equal(lower_level_labels)
+
+
+def test_public_assistant_labels_ignore_padding_internally() -> None:
+    processor = AutoProcessor.from_pretrained(
+        "Qwen/Qwen2.5-Omni-3B",
+        local_files_only=True,
+        trust_remote_code=True,
+    )
+    spec = AssistantMaskSpec(
+        assistant_header="<|im_start|>assistant\n",
+        assistant_end="<|im_end|>",
+    )
+    rendered = [
+        processor.apply_chat_template(
+            [
+                {"role": "user", "content": "short"},
+                {"role": "assistant", "content": "ok"},
+            ],
+            tokenize=False,
+            add_generation_prompt=False,
+        ),
+        processor.apply_chat_template(
+            [
+                {"role": "user", "content": "longer prompt " * 8},
+                {"role": "assistant", "content": "longer answer"},
+            ],
+            tokenize=False,
+            add_generation_prompt=False,
+        ),
+    ]
+    batch = processor(text=rendered, return_tensors="pt", padding=True)
+
+    labels = build_assistant_labels(batch, processor.tokenizer, spec)
+    padding = batch["attention_mask"] == 0
+
+    assert padding.any()
+    assert (labels[padding] == -100).all()
 
 
 def test_frame_mask_can_exclude_assistant_prefix_from_loss() -> None:
@@ -307,8 +380,6 @@ def test_multiturn_text_only_for_remaining_real_processors(
 
 
 def test_labels_reject_shape_mismatch() -> None:
-    import torch
-
     with pytest.raises(ValueError, match="frame_mask shape"):
         build_labels_from_frame_mask(
             input_ids=torch.tensor([[1, 2, 3]]),

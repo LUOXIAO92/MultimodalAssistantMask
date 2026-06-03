@@ -7,9 +7,8 @@ from transformers.image_utils import load_image
 from transformers import AutoProcessor
 
 from mm_assistant_mask import (
-    AssistantFrameSpec,
-    build_assistant_frame_masks,
-    build_labels_from_frame_mask,
+    AssistantMaskSpec,
+    build_assistant_labels,
 )
 
 MODEL_ID = "google/gemma-4-E2B-it"
@@ -71,21 +70,16 @@ batch = processor(
     return_tensors="pt",
 )
 
-# Build the training mask on final input_ids, then convert it to labels.
-frame_spec = AssistantFrameSpec(
+# Build assistant-only labels from the final processor input_ids.
+spec = AssistantMaskSpec(
     assistant_header="<|turn>model\n",
     assistant_end="<turn|>",
     generation_stop="<turn|>",
 )
-frame_masks = build_assistant_frame_masks(
-    input_ids=batch["input_ids"],
+labels = build_assistant_labels(
+    batch,
     tokenizer=processor.tokenizer,
-    spec=frame_spec,
-)
-labels = build_labels_from_frame_mask(
-    input_ids=batch["input_ids"],
-    frame_mask=frame_masks,
-    attention_mask=batch.get("attention_mask"),
+    spec=spec,
 )
 
 # Verify the supervised labels decode to exactly the fixed assistant target.

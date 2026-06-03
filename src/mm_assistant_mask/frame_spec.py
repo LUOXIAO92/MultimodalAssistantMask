@@ -25,3 +25,6 @@ class AssistantFrameSpec:
     @property
     def stop_text(self) -> str:
         return self.generation_stop or self.assistant_end
+
+
+AssistantMaskSpec = AssistantFrameSpec

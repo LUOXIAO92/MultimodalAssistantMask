@@ -32,4 +32,18 @@ def test_generic_collator_uses_processor_default_template() -> None:
     assert "chat_template=chat_template" not in source
     assert "processor.apply_chat_template" in source
     assert "media_kwargs" in source
-    assert "build_labels_from_frame_mask" in source
+    assert "build_assistant_labels" in source
+    assert "build_labels_from_frame_mask" not in source
+    assert "frame_masks" not in source
+    assert "attention_mask=batch.get" not in source
+
+
+def test_minimal_examples_use_public_labels_api() -> None:
+    for path in EXAMPLE_FILES:
+        source = path.read_text()
+        assert "AssistantMaskSpec" in source
+        assert "build_assistant_labels" in source
+        assert "build_assistant_frame_masks" not in source
+        assert "build_labels_from_frame_mask" not in source
+        assert "frame_masks" not in source
+        assert "attention_mask=batch.get" not in source
